@@ -1,7 +1,7 @@
-<script src="/socket.io/socket.io.js"></script>
+<script type="text/javascript" src="http://polar-everglades-6142.herokuapp.com/socket.io/socket.io.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
 <script>
-	var socket = io.connect(process.env.HOST + ':' + process.env.PORT);
+	var socket = io.connect('http://polar-everglades-6142.herokuapp.com/');
 
 	// on connection to server, ask for user's name with an anonymous callback
 	socket.on('connect', function(){
