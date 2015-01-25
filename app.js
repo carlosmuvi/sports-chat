@@ -8,7 +8,7 @@ server.listen(process.env.PORT || 8080)
 
 // routing
 app.get('/', function (req, res) {
-  res.sendFile(__dirname + '/index.html');
+  res.sendfile(__dirname + '/index.html');
 });
 
 // usernames which are currently connected to the chat
@@ -20,10 +20,7 @@ var rooms = [];
 io.sockets.on('connection', function (socket) {
 	
 	// when the client emits 'adduser', this listens and executes
-	socket.on('adduser', function(room){
-		// generates random username
-		var username = Math.random().toString(36).substring(7);
-		room = "prueba1"
+	socket.on('adduser', function(username, room){
 		// store the username in the socket session for this client
 		socket.username = username;
 		// store the room name in the socket session for this client
