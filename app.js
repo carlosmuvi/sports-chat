@@ -8,7 +8,7 @@ server.listen(process.env.PORT || 8080)
 
 // routing
 app.get('/', function (req, res) {
-  res.sendfile(__dirname + '/index.html');
+  res.sendFile(__dirname + '/index.html');
 });
 
 // usernames which are currently connected to the chat
@@ -23,6 +23,7 @@ io.sockets.on('connection', function (socket) {
 	socket.on('adduser', function(room){
 		// generates random username
 		var username = Math.random().toString(36).substring(7);
+		room = "prueba1"
 		// store the username in the socket session for this client
 		socket.username = username;
 		// store the room name in the socket session for this client
@@ -36,6 +37,9 @@ io.sockets.on('connection', function (socket) {
 		var roomAlreadyExists = rooms.indexOf(room);
 		if(roomAlreadyExists === -1){
 			rooms.push(room);
+			alert('this room is new!');
+		}else{
+			alert('this room already exists!');
 		}
 
 		// echo to client they've connected
