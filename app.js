@@ -1,10 +1,17 @@
 var express = require('express')
   , app = express()
   , http = require('http')
+  , mongoose = require('mongoose')
   , server = http.createServer(app)
   , io = require('socket.io').listen(server);
 
 server.listen(8080);
+
+//define database Uri, routing to localhost if not found
+var uristring =
+process.env.MONGOLAB_URI ||
+process.env.MONGOHQ_URL ||
+'mongodb://localhost/sportsdb';
 
 // routing
 app.get('/', function (req, res) {
@@ -43,6 +50,17 @@ io.sockets.on('connection', function (socket) {
 	socket.on('sendchat', function (data) {
 		// we tell the client to execute 'updatechat' with 2 parameters
 		io.sockets.in(socket.room).emit('updatechat', socket.username, data);
+
+		// store sent message into db
+		var Message = mongoose.model('messages', messageSchema);
+		var currentMessage = new Message ({
+		  messageId: 1, 
+		  messageContent: data, 
+		  roomId: socket.room 
+		});
+
+		currentMessage.save(function (err) {if (err) console.log ('Error on save!')});
+
 	});
 	
 	socket.on('switchRoom', function(newroom){
@@ -68,4 +86,22 @@ io.sockets.on('connection', function (socket) {
 		socket.broadcast.emit('updatechat', 'SERVER', socket.username + ' has disconnected');
 		socket.leave(socket.room);
 	});
+});
+
+/** STORAGE **/
+
+//Connect to MongoDb
+mongoose.connect(uristring, function (err, res) {
+  if (err) {
+  console.log ('ERROR connecting to: ' + uristring + '. ' + err);
+  } else {
+  console.log ('Succeeded connected to: ' + uristring);
+  }
+});
+
+// message schema
+var messageSchema = new mongoose.Schema({
+  messageId: Number,
+  messageContent: String,
+  roomId: String
 });
