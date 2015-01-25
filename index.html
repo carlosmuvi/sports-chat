@@ -1,12 +1,12 @@
-<script type="text/javascript" src="http://polar-everglades-6142.herokuapp.com/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
 <script>
-	var socket = io.connect('http://polar-everglades-6142.herokuapp.com/');
+	var socket = io.connect('http://localhost:8080');
 
 	// on connection to server, ask for user's name with an anonymous callback
 	socket.on('connect', function(){
 		// call the server-side function 'adduser' and send one parameter (value of prompt)
-		socket.emit('adduser', 'carlos', 'carlosRoom');
+		socket.emit('adduser', prompt("What's your name?"), prompt('room?'));
 	});
 
 	// listener, whenever the server emits 'updatechat', this updates the chat body
