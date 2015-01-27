@@ -2,6 +2,7 @@ var express = require('express')
   , app = express()
   , http = require('http')
   , mongoose = require('mongoose')
+  , bodyParser = require('body-parser')
   , server = http.createServer(app)
   , io = require('socket.io').listen(server);
 
@@ -13,9 +14,30 @@ process.env.MONGOLAB_URI ||
 process.env.MONGOHQ_URL ||
 'mongodb://localhost/sportsdb';
 
+app.use(bodyParser.json())
+
 // routing
 app.get('/', function (req, res) {
   res.sendfile(__dirname + '/index.html');
+});
+
+/*
+{
+  "roomIds": [
+    "Uno",
+    "Dos",
+    "tres"
+  ],
+  "lastMessageId": 1
+}
+*/
+
+app.post('/lastmessages', function (req, res) {
+	var roomIds = req.body.roomIds;
+	var lastMessageId = req.body.lastMessageId;
+	findlostMessages(roomIds, lastMessageId, function(data){
+		res.send(data);
+	})
 });
 
 // usernames which are currently connected to the chat
@@ -50,17 +72,7 @@ io.sockets.on('connection', function (socket) {
 	socket.on('sendchat', function (data) {
 		// we tell the client to execute 'updatechat' with 2 parameters
 		io.sockets.in(socket.room).emit('updatechat', socket.username, data);
-
-		// store sent message into db
-		var Message = mongoose.model('messages', messageSchema);
-		var currentMessage = new Message ({
-		  messageId: 1, 
-		  messageContent: data, 
-		  roomId: socket.room 
-		});
-
-		currentMessage.save(function (err) {if (err) console.log ('Error on save!')});
-
+		insertMessage(socket.room, socket.username, data)
 	});
 	
 	socket.on('switchRoom', function(newroom){
@@ -75,7 +87,6 @@ io.sockets.on('connection', function (socket) {
 		socket.emit('updaterooms', rooms, newroom);
 	});
 	
-
 	// when the user disconnects.. perform this
 	socket.on('disconnect', function(){
 		// remove the username from global usernames list
@@ -92,16 +103,83 @@ io.sockets.on('connection', function (socket) {
 
 //Connect to MongoDb
 mongoose.connect(uristring, function (err, res) {
-  if (err) {
-  console.log ('ERROR connecting to: ' + uristring + '. ' + err);
-  } else {
-  console.log ('Succeeded connected to: ' + uristring);
-  }
+	if (err) {
+		console.log ('ERROR connecting to: ' + uristring + '. ' + err);
+	} else {
+		console.log ('Succeeded connected to: ' + uristring);
+		loadRooms();
+	}
 });
 
 // message schema
 var messageSchema = new mongoose.Schema({
-  messageId: Number,
-  messageContent: String,
-  roomId: String
+	messageId: Number,
+	messageContent: String,
+	messageUserName: String,
+	roomId: String
 });
+
+var counterSchema = new mongoose.Schema({
+	seq: Number,
+	_id: String
+});
+
+var Message = mongoose.model('messages', messageSchema);
+var Counter = mongoose.model('counters', counterSchema);
+
+function loadRooms(){
+	Message.distinct('roomId', function(err, data){
+		if(err){
+			console.log ('Error retrieving rooms!')		
+		}else{
+			console.log ('Success retrieving rooms!' + data)
+			rooms = data;
+		}
+	});
+}
+
+function findlostMessages(roomIds, lastRcvMessageId, callback){
+	Message.find(
+		{ "messageId": { $gt: lastRcvMessageId }, "roomId": { $in: roomIds }},
+		'messageId messageContent messageUserName roomId',
+		function (err, docs) {
+			if (err){
+				console.log ('Error finding lost messages!' + err);	
+			}else{
+				console.log ('Success finding lost messages!' + docs);
+				callback(docs);	
+			} 
+		}
+	);
+}
+
+function insertMessage(roomId, messageUserName, messageContent){
+	//creates autoincrement ID  
+	Counter.findOneAndUpdate(
+	    {_id: "counterSequence"},
+	    {$inc:{seq:1}},
+	    {upsert: true, new:true},
+	    function(err, data) {
+			if(err){
+				console.log ('Error getting counter!' + err);		
+			}else{
+				console.log ('Success getting counter!' + data.seq);		
+				// store sent message into db
+				var currentMessage = new Message ({
+				  messageId: data.seq, 
+				  messageContent: messageContent, 
+				  messageUserName: messageUserName,
+				  roomId: roomId 
+				});
+				currentMessage.save(function (err){
+					if (err){
+						console.log ('Error on save!')	
+					}else{
+						console.log ('Success on save!')	
+					} 
+				});
+			}
+	    }
+	); 	
+}
+ 
